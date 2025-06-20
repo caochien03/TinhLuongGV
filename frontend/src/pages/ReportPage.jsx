@@ -9,7 +9,6 @@ import {
     Select,
     Button,
     Spin,
-    message,
 } from "antd";
 import {
     DownloadOutlined,
@@ -17,6 +16,7 @@ import {
     TeamOutlined,
     BankOutlined,
 } from "@ant-design/icons";
+import { toast } from "react-toastify";
 import axiosClient from "../api/axiosClient";
 
 const { TabPane } = Tabs;
@@ -31,11 +31,30 @@ const ReportPage = () => {
     const [years, setYears] = useState([]);
     const [selectedYear, setSelectedYear] = useState("");
     const [selectedDepartment, setSelectedDepartment] = useState("");
+    const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
-        fetchYears();
-        fetchDepartments();
+        const initializeData = async () => {
+            await fetchYears();
+            await fetchDepartments();
+            setIsInitialized(true);
+        };
+        initializeData();
     }, []);
+
+    // Auto fetch reports when data is initialized
+    useEffect(() => {
+        if (isInitialized && selectedYear) {
+            fetchYearReport();
+            fetchSchoolReport();
+        }
+    }, [isInitialized, selectedYear]);
+
+    useEffect(() => {
+        if (isInitialized && selectedDepartment) {
+            fetchDepartmentReport();
+        }
+    }, [isInitialized, selectedDepartment, selectedYear]);
 
     const fetchYears = async () => {
         try {
@@ -74,7 +93,6 @@ const ReportPage = () => {
             );
             setYearReport(response.data);
         } catch (error) {
-            message.error("Lỗi khi tải báo cáo năm học");
             console.error("Error fetching year report:", error);
         } finally {
             setLoading(false);
@@ -92,7 +110,6 @@ const ReportPage = () => {
             const response = await axiosClient.get(url);
             setDepartmentReport(response.data);
         } catch (error) {
-            message.error("Lỗi khi tải báo cáo khoa");
             console.error("Error fetching department report:", error);
         } finally {
             setLoading(false);
@@ -108,7 +125,6 @@ const ReportPage = () => {
             const response = await axiosClient.get(url);
             setSchoolReport(response.data);
         } catch (error) {
-            message.error("Lỗi khi tải báo cáo toàn trường");
             console.error("Error fetching school report:", error);
         } finally {
             setLoading(false);
@@ -290,12 +306,12 @@ const ReportPage = () => {
                             type="primary"
                             icon={<DownloadOutlined />}
                             onClick={() =>
-                                message.info(
+                                toast.info(
                                     "Tính năng xuất báo cáo sẽ được phát triển"
                                 )
                             }
                         >
-                            Xuất báo cáo
+                            Xuất Báo Cáo
                         </Button>
                     </Col>
                 </Row>

@@ -22,9 +22,9 @@ const Sidebar = () => {
             label: "Quản lý giáo viên",
             children: [
                 {
-                    key: "teachers",
-                    icon: <TeamOutlined />,
-                    label: "Danh sách giáo viên",
+                    key: "degrees",
+                    icon: <ApartmentOutlined />,
+                    label: "Quản lý bằng cấp",
                 },
                 {
                     key: "departments",
@@ -32,10 +32,11 @@ const Sidebar = () => {
                     label: "Quản lý khoa",
                 },
                 {
-                    key: "degrees",
-                    icon: <ApartmentOutlined />,
-                    label: "Quản lý bằng cấp",
+                    key: "teachers",
+                    icon: <TeamOutlined />,
+                    label: "Danh sách giáo viên",
                 },
+
                 {
                     key: "teacher-stats",
                     icon: <BarChartOutlined />,

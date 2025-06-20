@@ -22,6 +22,11 @@ router.get(
     "/stats/semester/:semesterId",
     courseClassController.getStatsBySemester
 );
+router.get("/stats/course/:courseId", courseClassController.getStatsByCourse);
+router.get(
+    "/stats/semester/:semesterId/course/:courseId",
+    courseClassController.getStatsBySemesterAndCourse
+);
 router.get("/stats/year/:year", courseClassController.getStatsByYear);
 
 module.exports = router;

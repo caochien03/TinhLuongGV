@@ -4,9 +4,36 @@ const teacherSchema = new mongoose.Schema(
     {
         code: { type: String, required: true, unique: true }, // mã số
         name: { type: String, required: true }, // họ tên
-        dob: { type: Date, required: true }, // ngày sinh
-        phone: { type: String },
-        email: { type: String },
+        dob: {
+            // ngày sinh
+            type: Date,
+            required: true,
+            validate: {
+                validator: function (value) {
+                    // Tính tuổi
+                    const age =
+                        new Date().getFullYear() -
+                        new Date(value).getFullYear();
+                    return age >= 22;
+                },
+                message: "Giảng viên phải từ 22 tuổi trở lên.",
+            },
+        },
+        phone: {
+            type: String,
+            validate: {
+                validator: function (v) {
+                    // Kiểm tra SĐT có 10 chữ số
+                    return /^\d{10}$/.test(v);
+                },
+                message: (props) =>
+                    `${props.value} không phải là số điện thoại hợp lệ! Phải có 10 chữ số.`,
+            },
+        },
+        email: {
+            type: String,
+            match: [/\S+@\S+\.\S+/, "Địa chỉ email không hợp lệ."],
+        },
         department: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Department",

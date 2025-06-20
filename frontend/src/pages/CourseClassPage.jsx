@@ -6,7 +6,6 @@ import {
     Form,
     Input,
     InputNumber,
-    message,
     Select,
     Card,
     Row,
@@ -15,11 +14,15 @@ import {
     Space,
     Popconfirm,
 } from "antd";
+import { toast } from "react-toastify";
 import { BookOutlined, TeamOutlined } from "@ant-design/icons";
 import axiosClient from "../api/axiosClient";
 
+const { Option } = Select;
+
 const CourseClassPage = () => {
     const [data, setData] = useState([]);
+    const [filteredData, setFilteredData] = useState([]);
     const [courses, setCourses] = useState([]);
     const [semesters, setSemesters] = useState([]);
     const [teachers, setTeachers] = useState([]);
@@ -27,8 +30,13 @@ const CourseClassPage = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form] = Form.useForm();
+
+    // State for filters and stats
     const [selectedSemester, setSelectedSemester] = useState(null);
-    const [stats, setStats] = useState(null);
+    const [semesterStats, setSemesterStats] = useState(null);
+    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [courseStats, setCourseStats] = useState(null);
+    const [combinedStats, setCombinedStats] = useState(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -42,24 +50,49 @@ const CourseClassPage = () => {
                 ]);
 
             setData(classesRes.data);
+            setFilteredData(classesRes.data);
             setCourses(coursesRes.data);
             setSemesters(semestersRes.data);
             setTeachers(teachersRes.data);
         } catch {
-            message.error("Lỗi tải dữ liệu");
+            toast.error("Lỗi tải dữ liệu");
         }
         setLoading(false);
     };
 
-    const fetchStats = async () => {
+    const fetchSemesterStats = async () => {
         if (!selectedSemester) return;
         try {
             const res = await axiosClient.get(
                 `/course-classes/stats/semester/${selectedSemester}`
             );
-            setStats(res.data);
+            setSemesterStats(res.data);
         } catch {
-            message.error("Lỗi tải thống kê");
+            toast.error("Lỗi tải thống kê theo kỳ học");
+        }
+    };
+
+    const fetchCourseStats = async () => {
+        if (!selectedCourse) return;
+        try {
+            const res = await axiosClient.get(
+                `/course-classes/stats/course/${selectedCourse}`
+            );
+            setCourseStats(res.data);
+        } catch {
+            toast.error("Lỗi tải thống kê theo học phần");
+        }
+    };
+
+    const fetchCombinedStats = async () => {
+        if (!selectedSemester || !selectedCourse) return;
+        try {
+            const res = await axiosClient.get(
+                `/course-classes/stats/semester/${selectedSemester}/course/${selectedCourse}`
+            );
+            setCombinedStats(res.data);
+        } catch {
+            toast.error("Lỗi tải thống kê kết hợp");
         }
     };
 
@@ -67,9 +100,61 @@ const CourseClassPage = () => {
         fetchData();
     }, []);
 
+    // Effect for semester filter
     useEffect(() => {
-        fetchStats();
-    }, [selectedSemester]);
+        if (selectedSemester && !selectedCourse) {
+            fetchSemesterStats();
+        } else {
+            setSemesterStats(null);
+        }
+    }, [selectedSemester, selectedCourse]);
+
+    // Effect for course filter
+    useEffect(() => {
+        if (selectedCourse && !selectedSemester) {
+            fetchCourseStats();
+        } else {
+            setCourseStats(null);
+        }
+    }, [selectedCourse, selectedSemester]);
+
+    // Effect for combined stats
+    useEffect(() => {
+        if (selectedSemester && selectedCourse) {
+            fetchCombinedStats();
+            setSemesterStats(null);
+            setCourseStats(null);
+        } else {
+            setCombinedStats(null);
+        }
+    }, [selectedSemester, selectedCourse]);
+
+    // Effect for combined filtering
+    useEffect(() => {
+        let filtered = data;
+
+        if (selectedSemester) {
+            filtered = filtered.filter(
+                (item) => item.semester?._id === selectedSemester
+            );
+        }
+
+        if (selectedCourse) {
+            filtered = filtered.filter(
+                (item) => item.course?._id === selectedCourse
+            );
+        }
+
+        setFilteredData(filtered);
+    }, [selectedSemester, selectedCourse, data]);
+
+    const handleSemesterSelect = (value) => {
+        setSelectedSemester(value);
+    };
+
+    const handleCourseSelect = (value) => {
+        setSelectedCourse(value);
+    };
 
     const handleAdd = () => {
         setEditing(null);
@@ -90,28 +175,36 @@ const CourseClassPage = () => {
 
     const handleDelete = async (id) => {
         try {
-            await axiosClient.delete(`/course-classes/${id}`);
-            message.success("Đã xóa");
+            const res = await axiosClient.delete(`/course-classes/${id}`);
+            toast.success(res.data?.message || "Đã xóa");
             fetchData();
-        } catch {
-            message.error("Lỗi xóa");
+        } catch (err) {
+            const msg = err.response?.data?.message || "Lỗi xóa";
+            toast.error(msg);
         }
     };
 
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
+            let res;
             if (editing) {
-                await axiosClient.put(`/course-classes/${editing._id}`, values);
-                message.success("Đã cập nhật");
+                res = await axiosClient.put(
+                    `/course-classes/${editing._id}`,
+                    values
+                );
+                toast.success(res.data?.message || "Đã cập nhật");
             } else {
-                await axiosClient.post("/course-classes", values);
-                message.success("Đã thêm mới");
+                res = await axiosClient.post("/course-classes", values);
+                toast.success(res.data?.message || "Đã thêm mới");
             }
             setModalOpen(false);
             fetchData();
-        } catch {
-            message.error("Vui lòng kiểm tra lại thông tin");
+        } catch (err) {
+            const msg =
+                err.response?.data?.message ||
+                "Vui lòng kiểm tra lại thông tin";
+            toast.error(msg);
         }
     };
 
@@ -194,59 +287,188 @@ const CourseClassPage = () => {
         },
     ];
 
+    const StatCard = ({ title, stats, renderItem }) => (
+        <Card title={title}>
+            {stats && stats.length > 0 ? (
+                stats.map((item, index) => (
+                    <Row key={index} gutter={16} style={{ marginBottom: 8 }}>
+                        {renderItem(item)}
+                    </Row>
+                ))
+            ) : (
+                <p>Không có dữ liệu thống kê.</p>
+            )}
+        </Card>
+    );
+
     return (
         <div style={{ padding: "24px" }}>
             <Row gutter={[16, 16]}>
-                <Col span={24}>
-                    <Card title="Thống kê lớp học phần">
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Select
-                                    style={{ width: "100%" }}
-                                    placeholder="Chọn kỳ học để xem thống kê"
-                                    onChange={setSelectedSemester}
-                                    value={selectedSemester}
-                                >
-                                    {semesters.map((sem) => (
-                                        <Select.Option
-                                            key={sem._id}
-                                            value={sem._id}
-                                        >
-                                            {formatSemester(sem)}
-                                        </Select.Option>
-                                    ))}
-                                </Select>
-                            </Col>
-                        </Row>
-                        {stats && (
-                            <Row gutter={16} style={{ marginTop: 16 }}>
-                                <Col span={8}>
-                                    <Card>
+                <Col span={8}>
+                    <Card title="Thống kê theo Kỳ học">
+                        <Select
+                            style={{ width: "100%", marginBottom: 16 }}
+                            placeholder="Chọn kỳ học"
+                            onChange={handleSemesterSelect}
+                            value={selectedSemester}
+                            allowClear
+                        >
+                            {semesters.map((sem) => (
+                                <Option key={sem._id} value={sem._id}>
+                                    {formatSemester(sem)}
+                                </Option>
+                            ))}
+                        </Select>
+                        {selectedSemester &&
+                            !selectedCourse &&
+                            semesterStats && (
+                                <StatCard
+                                    title={`Chi tiết cho ${
+                                        semesters.find(
+                                            (s) => s._id === selectedSemester
+                                        )?.name
+                                    } - ${
+                                        semesters.find(
+                                            (s) => s._id === selectedSemester
+                                        )?.year
+                                    }`}
+                                    stats={semesterStats}
+                                    renderItem={(item) => (
+                                        <>
+                                            <Col span={12}>
+                                                <Statistic
+                                                    title={item.courseName}
+                                                    value={item.totalClasses}
+                                                    prefix={<BookOutlined />}
+                                                    suffix="lớp"
+                                                />
+                                            </Col>
+                                            <Col span={12}>
+                                                <Statistic
+                                                    title="Tổng sinh viên"
+                                                    value={item.totalStudents}
+                                                    prefix={<TeamOutlined />}
+                                                />
+                                            </Col>
+                                        </>
+                                    )}
+                                />
+                            )}
+                    </Card>
+                </Col>
+                <Col span={8}>
+                    <Card title="Thống kê theo Học phần">
+                        <Select
+                            style={{ width: "100%", marginBottom: 16 }}
+                            placeholder="Chọn học phần"
+                            onChange={handleCourseSelect}
+                            value={selectedCourse}
+                            allowClear
+                            showSearch
+                            optionFilterProp="children"
+                        >
+                            {courses.map((course) => (
+                                <Option key={course._id} value={course._id}>
+                                    {course.name}
+                                </Option>
+                            ))}
+                        </Select>
+                        {selectedCourse && !selectedSemester && courseStats && (
+                            <StatCard
+                                title={`Chi tiết cho học phần ${
+                                    courses.find(
+                                        (c) => c._id === selectedCourse
+                                    )?.name
+                                }`}
+                                stats={courseStats}
+                                renderItem={(item) => (
+                                    <>
+                                        <Col span={12}>
+                                            <Statistic
+                                                title={`${item.semesterName} - ${item.semesterYear}`}
+                                                value={item.totalClasses}
+                                                prefix={<BookOutlined />}
+                                                suffix="lớp"
+                                            />
+                                        </Col>
+                                        <Col span={12}>
+                                            <Statistic
+                                                title="Tổng sinh viên"
+                                                value={item.totalStudents}
+                                                prefix={<TeamOutlined />}
+                                            />
+                                        </Col>
+                                    </>
+                                )}
+                            />
+                        )}
+                    </Card>
+                </Col>
+                <Col span={8}>
+                    <Card title="Thống kê Kết hợp">
+                        {selectedSemester && selectedCourse && combinedStats ? (
+                            <div>
+                                <Row gutter={16}>
+                                    <Col span={12}>
                                         <Statistic
                                             title="Tổng số lớp"
-                                            value={stats.reduce(
-                                                (sum, item) =>
-                                                    sum + item.totalClasses,
-                                                0
-                                            )}
+                                            value={combinedStats.totalClasses}
                                             prefix={<BookOutlined />}
                                         />
-                                    </Card>
-                                </Col>
-                                <Col span={8}>
-                                    <Card>
+                                    </Col>
+                                    <Col span={12}>
                                         <Statistic
-                                            title="Tổng số sinh viên"
-                                            value={stats.reduce(
-                                                (sum, item) =>
-                                                    sum + item.totalStudents,
-                                                0
-                                            )}
+                                            title="Tổng sinh viên"
+                                            value={combinedStats.totalStudents}
                                             prefix={<TeamOutlined />}
                                         />
-                                    </Card>
-                                </Col>
-                            </Row>
+                                    </Col>
+                                </Row>
+                                <Row gutter={16} style={{ marginTop: 16 }}>
+                                    <Col span={24}>
+                                        <Statistic
+                                            title="Trung bình sinh viên/lớp"
+                                            value={
+                                                combinedStats.avgStudentsPerClass
+                                            }
+                                            precision={1}
+                                        />
+                                    </Col>
+                                </Row>
+                                <div
+                                    style={{
+                                        marginTop: 16,
+                                        fontSize: "12px",
+                                        color: "#666",
+                                    }}
+                                >
+                                    <p>
+                                        <strong>Học kỳ:</strong>{" "}
+                                        {combinedStats.semesterName} -{" "}
+                                        {combinedStats.semesterYear}
+                                    </p>
+                                    <p>
+                                        <strong>Học phần:</strong>{" "}
+                                        {combinedStats.courseCode} -{" "}
+                                        {combinedStats.courseName}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : selectedSemester || selectedCourse ? (
+                            <div
+                                style={{ textAlign: "center", padding: "20px" }}
+                            >
+                                <p>
+                                    Chọn cả học kỳ và học phần để xem thống kê
+                                    chi tiết
+                                </p>
+                            </div>
+                        ) : (
+                            <div
+                                style={{ textAlign: "center", padding: "20px" }}
+                            >
+                                <p>Chọn ít nhất một tiêu chí để xem thống kê</p>
+                            </div>
                         )}
                     </Card>
                 </Col>
@@ -265,7 +487,7 @@ const CourseClassPage = () => {
                     <Table
                         rowKey="_id"
                         columns={columns}
-                        dataSource={data}
+                        dataSource={filteredData}
                         loading={loading}
                     />
                 </Col>
@@ -378,13 +600,9 @@ const CourseClassPage = () => {
                         initialValue="normal"
                     >
                         <Select>
-                            <Select.Option value="normal">Thường</Select.Option>
-                            <Select.Option value="special">
-                                Chất lượng cao
-                            </Select.Option>
-                            <Select.Option value="international">
-                                Quốc tế
-                            </Select.Option>
+                            <Option value="normal">Thường</Option>
+                            <Option value="special">Chất lượng cao</Option>
+                            <Option value="international">Quốc tế</Option>
                         </Select>
                     </Form.Item>
                     <Form.Item

@@ -6,9 +6,9 @@ import {
     Form,
     Input,
     InputNumber,
-    message,
     Popconfirm,
 } from "antd";
+import { toast } from "react-toastify";
 import axiosClient from "../api/axiosClient";
 
 const columns = [
@@ -33,7 +33,7 @@ const CoursePage = () => {
             const res = await axiosClient.get("/courses");
             setData(res.data);
         } catch {
-            message.error("Lỗi tải dữ liệu");
+            toast.error("Lỗi tải dữ liệu");
         }
         setLoading(false);
     };
@@ -56,28 +56,33 @@ const CoursePage = () => {
 
     const handleDelete = async (id) => {
         try {
-            await axiosClient.delete(`/courses/${id}`);
-            message.success("Đã xóa");
+            const res = await axiosClient.delete(`/courses/${id}`);
+            toast.success(res.data?.message || "Đã xóa");
             fetchData();
-        } catch {
-            message.error("Lỗi xóa");
+        } catch (err) {
+            const msg = err.response?.data?.message || "Lỗi xóa";
+            toast.error(msg);
         }
     };
 
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
+            let res;
             if (editing) {
-                await axiosClient.put(`/courses/${editing._id}`, values);
-                message.success("Đã cập nhật");
+                res = await axiosClient.put(`/courses/${editing._id}`, values);
+                toast.success(res.data?.message || "Đã cập nhật");
             } else {
-                await axiosClient.post("/courses", values);
-                message.success("Đã thêm mới");
+                res = await axiosClient.post("/courses", values);
+                toast.success(res.data?.message || "Đã thêm mới");
             }
             setModalOpen(false);
             fetchData();
-        } catch {
-            message.error("Vui lòng kiểm tra lại thông tin");
+        } catch (err) {
+            const msg =
+                err.response?.data?.message ||
+                "Vui lòng kiểm tra lại thông tin";
+            toast.error(msg);
         }
     };
 

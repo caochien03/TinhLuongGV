@@ -6,9 +6,10 @@ import {
     Form,
     Input,
     DatePicker,
-    message,
     Popconfirm,
+    Select,
 } from "antd";
+import { toast } from "react-toastify";
 import axiosClient from "../api/axiosClient";
 import dayjs from "dayjs";
 
@@ -42,7 +43,7 @@ const SemesterPage = () => {
             const res = await axiosClient.get("/semesters");
             setData(res.data);
         } catch {
-            message.error("Lỗi tải dữ liệu");
+            toast.error("Lỗi tải dữ liệu");
         }
         setLoading(false);
     };
@@ -69,36 +70,35 @@ const SemesterPage = () => {
 
     const handleDelete = async (id) => {
         try {
-            await axiosClient.delete(`/semesters/${id}`);
-            message.success("Đã xóa");
+            const res = await axiosClient.delete(`/semesters/${id}`);
+            toast.success(res.data?.message || "Đã xóa");
             fetchData();
-        } catch {
-            message.error("Lỗi xóa");
+        } catch (err) {
+            const msg = err.response?.data?.message || "Lỗi xóa";
+            toast.error(msg);
         }
     };
 
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
-            // Chuyển đổi Dayjs object thành ISO string
-            const data = {
-                ...values,
-                startDate: values.startDate.toISOString(),
-                endDate: values.endDate.toISOString(),
-            };
-
             if (editing) {
-                await axiosClient.put(`/semesters/${editing._id}`, data);
-                message.success("Đã cập nhật");
+                await axiosClient.put(`/semesters/${editing._id}`, values);
+                toast.success("Cập nhật học kỳ thành công!");
             } else {
-                await axiosClient.post("/semesters", data);
-                message.success("Đã thêm mới");
+                await axiosClient.post("/semesters", values);
+                toast.success("Thêm học kỳ thành công!");
             }
-            setModalOpen(false);
             fetchData();
-        } catch {
-            message.error("Vui lòng kiểm tra lại thông tin");
+            setModalOpen(false);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Thao tác thất bại");
         }
+    };
+
+    const handleCancel = () => {
+        setModalOpen(false);
     };
 
     const validateEndDate = (_, value) => {
@@ -154,33 +154,64 @@ const SemesterPage = () => {
                 title={editing ? "Cập nhật kỳ học" : "Thêm kỳ học"}
                 open={modalOpen}
                 onOk={handleOk}
-                onCancel={() => setModalOpen(false)}
+                onCancel={handleCancel}
                 destroyOnHidden
             >
-                <Form form={form} layout="vertical">
+                <Form form={form} layout="vertical" name="semester_form">
                     <Form.Item
                         name="name"
-                        label="Tên kỳ học"
+                        label="Tên Học Kỳ"
                         rules={[
                             {
                                 required: true,
-                                message: "Vui lòng nhập tên kỳ học",
+                                message: "Vui lòng chọn tên học kỳ!",
                             },
                         ]}
                     >
-                        <Input placeholder="VD: Học kỳ 1" />
+                        <Select placeholder="Chọn học kỳ">
+                            <Select.Option value="Học kì 1">
+                                Học kì 1
+                            </Select.Option>
+                            <Select.Option value="Học kì 2">
+                                Học kì 2
+                            </Select.Option>
+                            <Select.Option value="Học kì 3">
+                                Học kì 3
+                            </Select.Option>
+                        </Select>
                     </Form.Item>
                     <Form.Item
                         name="year"
-                        label="Năm học"
+                        label="Năm Học"
                         rules={[
                             {
                                 required: true,
-                                message: "Vui lòng nhập năm học",
+                                message: "Vui lòng nhập năm học!",
+                            },
+                            {
+                                pattern: /^(\d{4})-(\d{4})$/,
+                                message: "Định dạng năm học phải là YYYY-YYYY.",
+                            },
+                            {
+                                validator: (_, value) => {
+                                    if (value) {
+                                        const [startYear, endYear] = value
+                                            .split("-")
+                                            .map(Number);
+                                        if (endYear !== startYear + 1) {
+                                            return Promise.reject(
+                                                new Error(
+                                                    "Năm kết thúc phải lớn hơn năm bắt đầu 1 năm."
+                                                )
+                                            );
+                                        }
+                                    }
+                                    return Promise.resolve();
+                                },
                             },
                         ]}
                     >
-                        <Input placeholder="VD: 2023-2024" />
+                        <Input placeholder="Ví dụ: 2023-2024" />
                     </Form.Item>
                     <Form.Item
                         name="startDate"

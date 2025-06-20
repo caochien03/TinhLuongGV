@@ -8,8 +8,12 @@ import {
     message,
     Select,
     Popconfirm,
+    DatePicker,
 } from "antd";
+import { toast } from "react-toastify";
 import axiosClient from "../api/axiosClient";
+import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import moment from "moment";
 
 const columns = [
     { title: "Mã số", dataIndex: "code", key: "code" },
@@ -100,10 +104,11 @@ const TeacherPage = () => {
     const handleDelete = async (id) => {
         try {
             await axiosClient.delete(`/teachers/${id}`);
-            message.success("Đã xóa");
             fetchData();
-        } catch {
-            message.error("Lỗi xóa");
+            toast.success("Xóa giảng viên thành công!");
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Đã có lỗi xảy ra");
         }
     };
 
@@ -112,15 +117,15 @@ const TeacherPage = () => {
             const values = await form.validateFields();
             if (editing) {
                 await axiosClient.put(`/teachers/${editing._id}`, values);
-                message.success("Đã cập nhật");
             } else {
                 await axiosClient.post("/teachers", values);
-                message.success("Đã thêm mới");
             }
-            setModalOpen(false);
             fetchData();
-        } catch {
-            // Có thể xử lý lỗi nếu muốn
+            setModalOpen(false);
+            toast.success("Thao tác thành công!");
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Đã có lỗi xảy ra");
         }
     };
 
@@ -172,32 +177,83 @@ const TeacherPage = () => {
                 onCancel={() => setModalOpen(false)}
                 destroyOnHidden
             >
-                <Form form={form} layout="vertical">
+                <Form form={form} layout="vertical" name="teacher_form">
                     <Form.Item
                         name="code"
-                        label="Mã số"
-                        rules={[{ required: true }]}
+                        label="Mã Giảng Viên"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Vui lòng nhập mã giảng viên!",
+                            },
+                        ]}
                     >
                         <Input />
                     </Form.Item>
                     <Form.Item
                         name="name"
-                        label="Họ tên"
-                        rules={[{ required: true }]}
+                        label="Họ và Tên"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Vui lòng nhập họ và tên!",
+                            },
+                        ]}
                     >
                         <Input />
                     </Form.Item>
                     <Form.Item
                         name="dob"
-                        label="Ngày sinh"
-                        rules={[{ required: true }]}
+                        label="Ngày Sinh"
+                        rules={[
+                            {
+                                required: true,
+                                message: "Vui lòng chọn ngày sinh!",
+                            },
+                            {
+                                validator: (_, value) => {
+                                    if (
+                                        value &&
+                                        moment().diff(value, "years") < 22
+                                    ) {
+                                        return Promise.reject(
+                                            new Error(
+                                                "Giảng viên phải từ 22 tuổi trở lên."
+                                            )
+                                        );
+                                    }
+                                    return Promise.resolve();
+                                },
+                            },
+                        ]}
                     >
-                        <Input type="date" />
+                        <DatePicker
+                            style={{ width: "100%" }}
+                            format="DD/MM/YYYY"
+                        />
                     </Form.Item>
-                    <Form.Item name="phone" label="Điện thoại">
+                    <Form.Item
+                        name="phone"
+                        label="Số Điện Thoại"
+                        rules={[
+                            {
+                                pattern: /^\d{10}$/,
+                                message: "Số điện thoại phải có 10 chữ số!",
+                            },
+                        ]}
+                    >
                         <Input />
                     </Form.Item>
-                    <Form.Item name="email" label="Email">
+                    <Form.Item
+                        name="email"
+                        label="Email"
+                        rules={[
+                            {
+                                type: "email",
+                                message: "Định dạng email không hợp lệ!",
+                            },
+                        ]}
+                    >
                         <Input />
                     </Form.Item>
                     <Form.Item

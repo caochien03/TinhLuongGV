@@ -7,7 +7,15 @@ exports.createCourseClass = async (req, res) => {
         await courseClass.save();
         res.status(201).json(courseClass);
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        if (err.code === 11000 && err.keyPattern.code) {
+            return res
+                .status(400)
+                .json({ message: "Mã lớp học phần đã tồn tại." });
+        }
+        res.status(400).json({
+            message:
+                err.message || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.",
+        });
     }
 };
 
@@ -19,7 +27,10 @@ exports.getCourseClasses = async (req, res) => {
             .populate("teacher", "code name");
         res.json(courseClasses);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({
+            message:
+                "Không thể lấy danh sách lớp học phần. Vui lòng thử lại sau.",
+        });
     }
 };
 
@@ -29,10 +40,16 @@ exports.getCourseClassById = async (req, res) => {
             .populate("course", "code name credits coefficient totalLessons")
             .populate("semester", "name year startDate endDate")
             .populate("teacher", "code name");
-        if (!courseClass) return res.status(404).json({ error: "Not found" });
+        if (!courseClass)
+            return res
+                .status(404)
+                .json({ message: "Không tìm thấy lớp học phần." });
         res.json(courseClass);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({
+            message:
+                "Không thể lấy thông tin lớp học phần. Vui lòng thử lại sau.",
+        });
     }
 };
 
@@ -41,25 +58,174 @@ exports.updateCourseClass = async (req, res) => {
         const courseClass = await CourseClass.findByIdAndUpdate(
             req.params.id,
             req.body,
-            { new: true }
+            { new: true, runValidators: true }
         )
             .populate("course", "code name credits coefficient totalLessons")
             .populate("semester", "name year startDate endDate")
             .populate("teacher", "code name");
-        if (!courseClass) return res.status(404).json({ error: "Not found" });
+        if (!courseClass)
+            return res
+                .status(404)
+                .json({ message: "Không tìm thấy lớp học phần." });
         res.json(courseClass);
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        if (err.code === 11000 && err.keyPattern.code) {
+            return res
+                .status(400)
+                .json({ message: "Mã lớp học phần đã tồn tại." });
+        }
+        res.status(400).json({
+            message:
+                err.message || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.",
+        });
     }
 };
 
 exports.deleteCourseClass = async (req, res) => {
     try {
         const courseClass = await CourseClass.findByIdAndDelete(req.params.id);
-        if (!courseClass) return res.status(404).json({ error: "Not found" });
-        res.json({ message: "Deleted" });
+        if (!courseClass)
+            return res
+                .status(404)
+                .json({ message: "Không tìm thấy lớp học phần." });
+        res.json({ message: "Đã xóa lớp học phần thành công." });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({
+            message: "Không thể xóa lớp học phần. Vui lòng thử lại sau.",
+        });
+    }
+};
+
+// Thống kê số lớp mở theo kỳ học cho một học phần cụ thể
+exports.getStatsByCourse = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(courseId)) {
+            return res.status(400).json({ error: "Course ID không hợp lệ." });
+        }
+
+        const stats = await CourseClass.aggregate([
+            {
+                $match: {
+                    course: new mongoose.Types.ObjectId(courseId),
+                },
+            },
+            {
+                $lookup: {
+                    from: "semesters",
+                    localField: "semester",
+                    foreignField: "_id",
+                    as: "semesterInfo",
+                },
+            },
+            {
+                $unwind: "$semesterInfo",
+            },
+            {
+                $group: {
+                    _id: "$semester",
+                    semesterName: { $first: "$semesterInfo.name" },
+                    semesterYear: { $first: "$semesterInfo.year" },
+                    totalClasses: { $sum: 1 },
+                    totalStudents: { $sum: "$studentCount" },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    semesterId: "$_id",
+                    semesterName: 1,
+                    semesterYear: 1,
+                    totalClasses: 1,
+                    totalStudents: 1,
+                },
+            },
+            {
+                $sort: { semesterYear: -1, semesterName: 1 },
+            },
+        ]);
+        res.json(stats);
+    } catch (err) {
+        console.error("Lỗi khi lấy dữ liệu thống kê theo học phần:", err);
+        res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
+    }
+};
+
+// Thống kê số lớp mở theo cả học kỳ và học phần
+exports.getStatsBySemesterAndCourse = async (req, res) => {
+    try {
+        const { semesterId, courseId } = req.params;
+
+        if (
+            !mongoose.Types.ObjectId.isValid(semesterId) ||
+            !mongoose.Types.ObjectId.isValid(courseId)
+        ) {
+            return res
+                .status(400)
+                .json({ error: "Semester ID hoặc Course ID không hợp lệ." });
+        }
+
+        const stats = await CourseClass.aggregate([
+            {
+                $match: {
+                    semester: new mongoose.Types.ObjectId(semesterId),
+                    course: new mongoose.Types.ObjectId(courseId),
+                },
+            },
+            {
+                $lookup: {
+                    from: "semesters",
+                    localField: "semester",
+                    foreignField: "_id",
+                    as: "semesterInfo",
+                },
+            },
+            {
+                $lookup: {
+                    from: "courses",
+                    localField: "course",
+                    foreignField: "_id",
+                    as: "courseInfo",
+                },
+            },
+            {
+                $unwind: "$semesterInfo",
+            },
+            {
+                $unwind: "$courseInfo",
+            },
+            {
+                $group: {
+                    _id: null,
+                    semesterName: { $first: "$semesterInfo.name" },
+                    semesterYear: { $first: "$semesterInfo.year" },
+                    courseName: { $first: "$courseInfo.name" },
+                    courseCode: { $first: "$courseInfo.code" },
+                    totalClasses: { $sum: 1 },
+                    totalStudents: { $sum: "$studentCount" },
+                    avgStudentsPerClass: { $avg: "$studentCount" },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    semesterName: 1,
+                    semesterYear: 1,
+                    courseName: 1,
+                    courseCode: 1,
+                    totalClasses: 1,
+                    totalStudents: 1,
+                    avgStudentsPerClass: {
+                        $round: ["$avgStudentsPerClass", 1],
+                    },
+                },
+            },
+        ]);
+
+        res.json(stats.length > 0 ? stats[0] : null);
+    } catch (err) {
+        console.error("Lỗi khi lấy dữ liệu thống kê kết hợp:", err);
+        res.status(500).json({ error: "Lỗi hệ thống: " + err.message });
     }
 };
 
@@ -70,7 +236,7 @@ exports.getStatsBySemester = async (req, res) => {
         const stats = await CourseClass.aggregate([
             {
                 $match: {
-                    semester: mongoose.Types.ObjectId(semesterId),
+                    semester: new mongoose.Types.ObjectId(semesterId),
                 },
             },
             {

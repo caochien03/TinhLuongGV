@@ -1,5 +1,14 @@
 const mongoose = require("mongoose");
 
+const duplicateCheck = async function (model, field, value, idToExclude) {
+    const query = { [field]: { $regex: new RegExp(`^${value}$`, "i") } };
+    if (idToExclude) {
+        query._id = { $ne: idToExclude };
+    }
+    const existing = await model.findOne(query);
+    return existing;
+};
+
 const courseClassSchema = new mongoose.Schema(
     {
         course: {
@@ -34,16 +43,48 @@ const courseClassSchema = new mongoose.Schema(
             comment: "Hệ số lớp",
         },
         code: { type: String, required: true, unique: true },
-        name: { type: String, required: true },
+        name: {
+            type: String,
+            required: [true, "Tên lớp học phần là bắt buộc."],
+        },
         studentCount: { type: Number, default: 0 },
     },
     { timestamps: true }
 );
 
-// Đảm bảo mỗi giảng viên chỉ dạy một lớp của một môn trong một kỳ
-courseClassSchema.index(
-    { course: 1, semester: 1, teacher: 1 },
-    { unique: true }
-);
+courseClassSchema.pre("save", async function (next) {
+    if (this.isModified("name")) {
+        const existing = await duplicateCheck(
+            this.constructor,
+            "name",
+            this.name,
+            this._id
+        );
+        if (existing) {
+            return next(
+                new Error(`Tên lớp học phần "${this.name}" đã tồn tại.`)
+            );
+        }
+    }
+    next();
+});
+
+courseClassSchema.pre("findOneAndUpdate", async function (next) {
+    const docToUpdate = this.getUpdate();
+    if (docToUpdate.name) {
+        const existing = await duplicateCheck(
+            this.model,
+            "name",
+            docToUpdate.name,
+            this.getQuery()._id
+        );
+        if (existing) {
+            return next(
+                new Error(`Tên lớp học phần "${docToUpdate.name}" đã tồn tại.`)
+            );
+        }
+    }
+    next();
+});
 
 module.exports = mongoose.model("CourseClass", courseClassSchema);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, message, Popconfirm } from "antd";
+import { Table, Button, Modal, Form, Input, Popconfirm } from "antd";
+import { toast } from "react-toastify";
 import axiosClient from "../api/axiosClient";
 
 const columns = [
@@ -21,7 +22,7 @@ const DepartmentPage = () => {
             const res = await axiosClient.get("/departments");
             setData(res.data);
         } catch {
-            message.error("Lỗi tải dữ liệu");
+            toast.error("Lỗi tải dữ liệu");
         }
         setLoading(false);
     };
@@ -44,28 +45,34 @@ const DepartmentPage = () => {
 
     const handleDelete = async (id) => {
         try {
-            await axiosClient.delete(`/departments/${id}`);
-            message.success("Đã xóa");
+            const res = await axiosClient.delete(`/departments/${id}`);
+            toast.success(res.data?.message || "Đã xóa");
             fetchData();
-        } catch {
-            message.error("Lỗi xóa");
+        } catch (err) {
+            const msg = err.response?.data?.message || "Lỗi xóa";
+            toast.error(msg);
         }
     };
 
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
+            let res;
             if (editing) {
-                await axiosClient.put(`/departments/${editing._id}`, values);
-                message.success("Đã cập nhật");
+                res = await axiosClient.put(
+                    `/departments/${editing._id}`,
+                    values
+                );
+                toast.success(res.data?.message || "Đã cập nhật");
             } else {
-                await axiosClient.post("/departments", values);
-                message.success("Đã thêm mới");
+                res = await axiosClient.post("/departments", values);
+                toast.success(res.data?.message || "Đã thêm mới");
             }
             setModalOpen(false);
             fetchData();
-        } catch {
-            // Có thể xử lý lỗi nếu muốn
+        } catch (err) {
+            const msg = err.response?.data?.message || "Lỗi thao tác";
+            toast.error(msg);
         }
     };
 

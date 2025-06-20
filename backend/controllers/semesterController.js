@@ -6,7 +6,18 @@ exports.createSemester = async (req, res) => {
         await semester.save();
         res.status(201).json(semester);
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        if (err.name === "ValidationError") {
+            const messages = Object.values(err.errors).map(
+                (val) => val.message
+            );
+            return res.status(400).json({ message: messages.join(" ") });
+        }
+        if (err.code === 11000) {
+            return res
+                .status(400)
+                .json({ message: "Học kỳ này trong năm học đã tồn tại." });
+        }
+        res.status(500).json({ message: "Đã xảy ra lỗi hệ thống." });
     }
 };
 
@@ -15,17 +26,22 @@ exports.getSemesters = async (req, res) => {
         const semesters = await Semester.find();
         res.json(semesters);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({
+            message: "Không thể lấy danh sách kỳ học. Vui lòng thử lại sau.",
+        });
     }
 };
 
 exports.getSemesterById = async (req, res) => {
     try {
         const semester = await Semester.findById(req.params.id);
-        if (!semester) return res.status(404).json({ error: "Not found" });
+        if (!semester)
+            return res.status(404).json({ message: "Không tìm thấy kỳ học." });
         res.json(semester);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({
+            message: "Không thể lấy thông tin kỳ học. Vui lòng thử lại sau.",
+        });
     }
 };
 
@@ -34,21 +50,36 @@ exports.updateSemester = async (req, res) => {
         const semester = await Semester.findByIdAndUpdate(
             req.params.id,
             req.body,
-            { new: true }
+            { new: true, runValidators: true }
         );
-        if (!semester) return res.status(404).json({ error: "Not found" });
+        if (!semester)
+            return res.status(404).json({ message: "Không tìm thấy học kỳ." });
         res.json(semester);
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        if (err.name === "ValidationError") {
+            const messages = Object.values(err.errors).map(
+                (val) => val.message
+            );
+            return res.status(400).json({ message: messages.join(" ") });
+        }
+        if (err.code === 11000) {
+            return res
+                .status(400)
+                .json({ message: "Học kỳ này trong năm học đã tồn tại." });
+        }
+        res.status(500).json({ message: "Đã xảy ra lỗi hệ thống." });
     }
 };
 
 exports.deleteSemester = async (req, res) => {
     try {
         const semester = await Semester.findByIdAndDelete(req.params.id);
-        if (!semester) return res.status(404).json({ error: "Not found" });
-        res.json({ message: "Deleted" });
+        if (!semester)
+            return res.status(404).json({ message: "Không tìm thấy kỳ học." });
+        res.json({ message: "Đã xóa kỳ học thành công." });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({
+            message: "Không thể xóa kỳ học. Vui lòng thử lại sau.",
+        });
     }
 };
