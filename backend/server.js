@@ -8,6 +8,7 @@ const courseRoutes = require("./routes/courseRoutes");
 const semesterRoutes = require("./routes/semesterRoutes");
 const courseClassRoutes = require("./routes/courseClassRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 
 const connectDB = require("./config/db");
 
@@ -29,6 +30,7 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/semesters", semesterRoutes);
 app.use("/api/course-classes", courseClassRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/settings", settingsRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

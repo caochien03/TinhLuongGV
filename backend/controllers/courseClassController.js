@@ -22,7 +22,7 @@ exports.createCourseClass = async (req, res) => {
 exports.getCourseClasses = async (req, res) => {
     try {
         const courseClasses = await CourseClass.find()
-            .populate("course", "code name credits coefficient totalLessons")
+            .populate("course", "code name credits totalLessons")
             .populate("semester", "name year startDate endDate")
             .populate("teacher", "code name");
         res.json(courseClasses);
@@ -37,7 +37,7 @@ exports.getCourseClasses = async (req, res) => {
 exports.getCourseClassById = async (req, res) => {
     try {
         const courseClass = await CourseClass.findById(req.params.id)
-            .populate("course", "code name credits coefficient totalLessons")
+            .populate("course", "code name credits totalLessons")
             .populate("semester", "name year startDate endDate")
             .populate("teacher", "code name");
         if (!courseClass)
@@ -60,7 +60,7 @@ exports.updateCourseClass = async (req, res) => {
             req.body,
             { new: true, runValidators: true }
         )
-            .populate("course", "code name credits coefficient totalLessons")
+            .populate("course", "code name credits totalLessons")
             .populate("semester", "name year startDate endDate")
             .populate("teacher", "code name");
         if (!courseClass)

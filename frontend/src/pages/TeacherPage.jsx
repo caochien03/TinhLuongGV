@@ -94,7 +94,7 @@ const TeacherPage = () => {
         setEditing(record);
         form.setFieldsValue({
             ...record,
-            dob: record.dob ? record.dob.slice(0, 10) : "",
+            dob: record.dob ? moment(record.dob) : null,
             department: record.department?._id,
             degree: record.degree?._id,
         });
@@ -223,8 +223,20 @@ const TeacherPage = () => {
                                 validator: (_, value) => {
                                     if (value) {
                                         const currentYear = moment().year();
-                                        const birthYear =
-                                            value.$y || value.year();
+                                        let birthYear;
+
+                                        // Xử lý cả moment object và string
+                                        if (value.$y) {
+                                            // Moment object từ DatePicker
+                                            birthYear = value.$y;
+                                        } else if (typeof value === "string") {
+                                            // String date từ backend
+                                            birthYear = moment(value).year();
+                                        } else {
+                                            // Moment object từ handleEdit
+                                            birthYear = value.year();
+                                        }
+
                                         const age = currentYear - birthYear;
 
                                         console.log("=== DEBUG TUỔI ===");

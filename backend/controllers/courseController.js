@@ -1,4 +1,5 @@
 const Course = require("../models/Course");
+const CourseClass = require("../models/CourseClass");
 
 exports.createCourse = async (req, res) => {
     try {
@@ -66,6 +67,14 @@ exports.updateCourse = async (req, res) => {
 
 exports.deleteCourse = async (req, res) => {
     try {
+        // Kiểm tra xem có lớp học phần nào đang sử dụng course này không
+        const courseClasses = await CourseClass.find({ course: req.params.id });
+        if (courseClasses.length > 0) {
+            return res.status(400).json({
+                message: `Không thể xóa học phần này vì có ${courseClasses.length} lớp học phần đang sử dụng. Vui lòng xóa các lớp học phần trước.`,
+            });
+        }
+
         const course = await Course.findByIdAndDelete(req.params.id);
         if (!course)
             return res

@@ -228,13 +228,19 @@ const CourseClassPage = () => {
             title: "Môn học",
             dataIndex: ["course", "name"],
             key: "course",
+            render: (_, record) =>
+                record.course
+                    ? `${record.course.code} - ${record.course.name}`
+                    : "Môn học đã bị xóa",
         },
         {
             title: "Kỳ học",
             dataIndex: ["semester", "name"],
             key: "semester",
             render: (_, record) =>
-                `${record.semester.name} - ${record.semester.year}`,
+                record.semester
+                    ? `${record.semester.name} - ${record.semester.year}`
+                    : "Kỳ học đã bị xóa",
         },
         {
             title: "Giảng viên",
@@ -606,24 +612,6 @@ const CourseClassPage = () => {
                             <Option value="special">Chất lượng cao</Option>
                             <Option value="international">Quốc tế</Option>
                         </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="coefficient"
-                        label="Hệ số lớp"
-                        rules={[
-                            {
-                                required: true,
-                                message: "Vui lòng nhập hệ số",
-                            },
-                        ]}
-                        initialValue={1}
-                    >
-                        <InputNumber
-                            min={1}
-                            step={0.1}
-                            style={{ width: "100%" }}
-                            placeholder="VD: 1.2"
-                        />
                     </Form.Item>
                     <Form.Item
                         name="studentCount"

@@ -17,7 +17,6 @@ const courseSchema = new mongoose.Schema(
             required: [true, "Tên học phần là bắt buộc."],
         },
         credits: { type: Number, required: true },
-        coefficient: { type: Number, required: true },
         totalLessons: { type: Number, required: true },
         description: { type: String },
     },

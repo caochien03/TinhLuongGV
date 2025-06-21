@@ -1,4 +1,5 @@
 const Semester = require("../models/Semester");
+const CourseClass = require("../models/CourseClass");
 
 exports.createSemester = async (req, res) => {
     try {
@@ -73,6 +74,16 @@ exports.updateSemester = async (req, res) => {
 
 exports.deleteSemester = async (req, res) => {
     try {
+        // Kiểm tra xem có lớp học phần nào đang sử dụng học kỳ này không
+        const courseClasses = await CourseClass.find({
+            semester: req.params.id,
+        });
+        if (courseClasses.length > 0) {
+            return res.status(400).json({
+                message: `Không thể xóa học kỳ này vì có ${courseClasses.length} lớp học phần đang sử dụng. Vui lòng xóa các lớp học phần trước.`,
+            });
+        }
+
         const semester = await Semester.findByIdAndDelete(req.params.id);
         if (!semester)
             return res.status(404).json({ message: "Không tìm thấy kỳ học." });

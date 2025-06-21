@@ -15,7 +15,6 @@ const columns = [
     { title: "Mã học phần", dataIndex: "code", key: "code" },
     { title: "Tên học phần", dataIndex: "name", key: "name" },
     { title: "Số tín chỉ", dataIndex: "credits", key: "credits" },
-    { title: "Hệ số", dataIndex: "coefficient", key: "coefficient" },
     { title: "Số tiết", dataIndex: "totalLessons", key: "totalLessons" },
     { title: "Mô tả", dataIndex: "description", key: "description" },
 ];
@@ -170,22 +169,6 @@ const CoursePage = () => {
                         ]}
                     >
                         <InputNumber min={1} style={{ width: "100%" }} />
-                    </Form.Item>
-                    <Form.Item
-                        name="coefficient"
-                        label="Hệ số học phần"
-                        rules={[
-                            {
-                                required: true,
-                                message: "Vui lòng nhập hệ số học phần",
-                            },
-                        ]}
-                    >
-                        <InputNumber
-                            min={0}
-                            step={0.1}
-                            style={{ width: "100%" }}
-                        />
                     </Form.Item>
                     <Form.Item
                         name="totalLessons"
