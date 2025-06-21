@@ -115,6 +115,12 @@ const TeacherPage = () => {
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
+            console.log("=== FORM VALUES ===");
+            console.log("Toàn bộ dữ liệu form:", values);
+            console.log("Ngày sinh (dob):", values.dob);
+            console.log("Type của dob:", typeof values.dob);
+            console.log("==================");
+
             if (editing) {
                 await axiosClient.put(`/teachers/${editing._id}`, values);
             } else {
@@ -124,7 +130,10 @@ const TeacherPage = () => {
             setModalOpen(false);
             toast.success("Thao tác thành công!");
         } catch (error) {
-            console.error(error);
+            console.error("=== FORM ERROR ===");
+            console.error("Lỗi validation:", error);
+            console.error("Error fields:", error.errorFields);
+            console.error("==================");
             toast.error(error.response?.data?.message || "Đã có lỗi xảy ra");
         }
     };
@@ -212,15 +221,36 @@ const TeacherPage = () => {
                             },
                             {
                                 validator: (_, value) => {
-                                    if (
-                                        value &&
-                                        moment().diff(value, "years") < 22
-                                    ) {
-                                        return Promise.reject(
-                                            new Error(
-                                                "Giảng viên phải từ 22 tuổi trở lên."
-                                            )
+                                    if (value) {
+                                        const currentYear = moment().year();
+                                        const birthYear =
+                                            value.$y || value.year();
+                                        const age = currentYear - birthYear;
+
+                                        console.log("=== DEBUG TUỔI ===");
+                                        console.log(
+                                            "Ngày sinh được chọn:",
+                                            value
                                         );
+                                        console.log(
+                                            "Năm hiện tại:",
+                                            currentYear
+                                        );
+                                        console.log("Năm sinh:", birthYear);
+                                        console.log("Tuổi tính được:", age);
+                                        console.log(
+                                            "Điều kiện age >= 22:",
+                                            age >= 22
+                                        );
+                                        console.log("==================");
+
+                                        if (age < 22) {
+                                            return Promise.reject(
+                                                new Error(
+                                                    "Giảng viên phải từ 22 tuổi trở lên."
+                                                )
+                                            );
+                                        }
                                     }
                                     return Promise.resolve();
                                 },

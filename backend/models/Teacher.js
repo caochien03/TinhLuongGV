@@ -10,10 +10,11 @@ const teacherSchema = new mongoose.Schema(
             required: true,
             validate: {
                 validator: function (value) {
-                    // Tính tuổi
-                    const age =
-                        new Date().getFullYear() -
-                        new Date(value).getFullYear();
+                    // Tính tuổi theo năm
+                    const currentYear = new Date().getFullYear();
+                    const birthYear = new Date(value).getFullYear();
+                    const age = currentYear - birthYear;
+
                     return age >= 22;
                 },
                 message: "Giảng viên phải từ 22 tuổi trở lên.",

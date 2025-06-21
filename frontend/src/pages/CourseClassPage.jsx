@@ -241,7 +241,9 @@ const CourseClassPage = () => {
             dataIndex: ["teacher", "name"],
             key: "teacher",
             render: (_, record) =>
-                `${record.teacher.code} - ${record.teacher.name}`,
+                record.teacher
+                    ? `${record.teacher.code} - ${record.teacher.name}`
+                    : "Chưa phân công",
         },
         {
             title: "Loại lớp",
